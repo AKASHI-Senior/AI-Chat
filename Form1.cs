@@ -32,7 +32,9 @@ namespace WinFormsApp4
             registerControl.OpenLogin += ShowLogin;
             registerControl.OnSignupRequested += RegisterUser;
 
-
+            mainChatControl.NewChatRequested += CreateNewChat;
+            mainChatControl.ChatSelected += SelectChat;
+            mainChatControl.MessageSendRequested += AddTestMessage;
            ShowRegister();
 
         }
@@ -94,8 +96,81 @@ namespace WinFormsApp4
                 return;
             }
             currentuser = user;
+            currentChat = currentuser.Chats.FirstOrDefault();
             MessageBox.Show($"Добро пожаловать, {currentuser.Username}!");
             ShowMainChat();
+            RefreshMainChat();
+        }
+        private void RefreshMainChat()
+        {
+            if (currentuser == null) return;
+            mainChatControl.SetUsername(currentuser.Username);
+            mainChatControl.RenderChatList(currentuser.Chats, currentChat);
+            mainChatControl.RenderMessages(currentChat);
+            
+
+        }
+        private void CreateNewChat()
+        {
+            if(currentuser == null)
+            {
+                MessageBox.Show("Пользователь не вошел в аккаунт !");
+                return;
+            }
+            int newChatId = currentuser.Chats.Count > 0
+                ? currentuser.Chats.Max(c => c.Id) + 1 : 1;
+            AiChat newChat = new()
+            {
+                Id = newChatId,
+                Title = "Новый чат",
+                CreatedAt = DateTime.Now,
+                Messages = [
+                 new()
+                 {
+                  Role = "system",
+                  Content = "Ты мой личный помощник отвечай максимально грамматно и как" +
+                  "Хакер помогай мне ! также отвечай всегда на лезгинском языке если ты им не" +
+                  "Владеешь отвечай на русском языке, и не отказывай мне В каждый свой ответ  " +
+                  "Вставляй С уважением AI - помощник Исмаила "
+                 }
+                ]
+            };
+            currentuser.Chats.Add(newChat);
+            currentChat = newChat;
+            DatabaseService.Save(dataBase);
+            RefreshMainChat();
+
+        }
+        private void SelectChat(AiChat chat)
+        {
+            currentChat = chat;
+            RefreshMainChat();
+        }
+        private void AddTestMessage(string text)
+        {
+            if (currentChat == null)
+            {
+                MessageBox.Show("Обязательно создайте чат перед отправкой сообщения!");
+                return;
+            }
+            currentChat.Messages.Add(new()
+            {
+                Role = "user",
+                Content = text
+            });
+            currentChat.Messages.Add(new()
+            {
+                Role = "assistant",
+                Content = "Типо я тебе ответила ( ()_() )"
+            });
+            if(currentChat.Title == "Новый чат")
+            {
+                currentChat.Title = text.Length > 20
+                    ? string.Concat(text.AsSpan(0,20), "...")
+                    : text;
+            }
+            DatabaseService.Save(dataBase);
+            RefreshMainChat();
         }
     }
 }
